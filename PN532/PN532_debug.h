@@ -1,15 +1,11 @@
 #ifndef __DEBUG_H__
 #define __DEBUG_H__
 
-#define DEBUG
+//#define DEBUG
 
 #include "Arduino.h"
 
-#ifdef ARDUINO_STM_NUCLEU_F103RB
-    #define SERIALPORT Serial1
-#else
-    #define SERIALPORT Serial
-#endif
+#define SERIALPORT Serial
 
 #ifdef DEBUG
     #define DMSG(args...)       SERIALPORT.print(args)

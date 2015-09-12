@@ -7,7 +7,7 @@
 
 class PN532_I2C : public PN532Interface {
 public:
-    PN532_I2C(WireBase &wire);
+    PN532_I2C(TwoWire &wire, uint8_t pinReset, uint8_t pinIrq);
     
     void begin();
     void wakeup();
@@ -15,10 +15,14 @@ public:
     int16_t readResponse(uint8_t buf[], uint8_t len, uint16_t timeout);
     
 private:
-    WireBase* _wire;
+    TwoWire* _wire;
     uint8_t command;
-    
+    uint8_t _reset;
+    uint8_t _irq;
+
     int8_t readAckFrame();
+    bool waitready(uint16_t timeout);
+
     
     inline uint8_t write(uint8_t data) {
         #if ARDUINO >= 100
