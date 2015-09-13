@@ -17,15 +17,16 @@ PN532_SPI::PN532_SPI(SPIClass &spi, uint8_t ss)
 void PN532_SPI::begin()
 {
     pinMode(_ss, OUTPUT);
-
     _spi->begin();
     _spi->setDataMode(SPI_MODE0);  // PN532 only supports mode0
     _spi->setBitOrder(LSBFIRST);
-#ifndef __SAM3X8E__
-    _spi->setClockDivider(SPI_CLOCK_DIV8); // set clock 2MHz(max: 5MHz)
-#else 
+#ifdef __SAM3X8E__
     /** DUE spi library does not support SPI_CLOCK_DIV8 macro */
     _spi->setClockDivider(42);             // set clock 2MHz(max: 5MHz)
+#elif defined(ARDUINO_STM_NUCLEU_F103RB)
+    _spi->setClockDivider(SPI_CLOCK_DIV32); // set clock 72/32=2.25MHz (max: 5MHz)
+#else
+    _spi->setClockDivider(SPI_CLOCK_DIV8); // set clock 2MHz for 16MHz Arduino(max: 5MHz)
 #endif
 
 }
@@ -141,10 +142,10 @@ int16_t PN532_SPI::readResponse(uint8_t buf[], uint8_t len, uint16_t timeout)
 
 boolean PN532_SPI::isReady()
 {
+    uint8_t status;
     digitalWrite(_ss, LOW);
-
     write(STATUS_READ);
-    uint8_t status = read() & 1;
+    status = read() & 1;
     digitalWrite(_ss, HIGH);
     return status;
 }
@@ -153,7 +154,6 @@ void PN532_SPI::writeFrame(const uint8_t *header, uint8_t hlen, const uint8_t *b
 {
     digitalWrite(_ss, LOW);
     delay(2);               // wake up PN532
-
     write(DATA_WRITE);
     write(PN532_PREAMBLE);
     write(PN532_STARTCODE1);
