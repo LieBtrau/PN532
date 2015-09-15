@@ -17,18 +17,8 @@ PN532_SPI::PN532_SPI(SPIClass &spi, uint8_t ss)
 void PN532_SPI::begin()
 {
     pinMode(_ss, OUTPUT);
+    _spiSettings=SPISettings(2000000, LSBFIRST, SPI_MODE0);
     _spi->begin();
-    _spi->setDataMode(SPI_MODE0);  // PN532 only supports mode0
-    _spi->setBitOrder(LSBFIRST);
-#ifdef __SAM3X8E__
-    /** DUE spi library does not support SPI_CLOCK_DIV8 macro */
-    _spi->setClockDivider(42);             // set clock 2MHz(max: 5MHz)
-#elif defined(ARDUINO_STM_NUCLEU_F103RB)
-    _spi->setClockDivider(SPI_CLOCK_DIV32); // set clock 72/32=2.25MHz (max: 5MHz)
-#else
-    _spi->setClockDivider(SPI_CLOCK_DIV8); // set clock 2MHz for 16MHz Arduino(max: 5MHz)
-#endif
-
 }
 
 void PN532_SPI::wakeup()
