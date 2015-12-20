@@ -269,7 +269,11 @@ bool PN532::setPassiveActivationRetries(uint8_t maxRetries)
 }
 
 /***** ISO14443A Commands ******/
-
+//MiFare Classic is partly compliant to ISO14443A
+// REQA (old name = SENS_REQ) ->
+// ATQA (old name = SENS_RES) <-
+// SEL_REQ ->
+// SAK (old name = SEL_RES) <-
 /**************************************************************************/
 /*!
     Waits for an ISO14443A target to enter the field
@@ -286,7 +290,7 @@ bool PN532::setPassiveActivationRetries(uint8_t maxRetries)
 */
 /**************************************************************************/
 bool PN532::readPassiveTargetID(uint8_t cardbaudrate, uint8_t *uid, uint8_t *uidLength, uint16_t timeout, bool inlist)
-{
+{ 
     pn532_packetbuffer[0] = PN532_COMMAND_INLISTPASSIVETARGET;
     pn532_packetbuffer[1] = 1;  // max 1 cards at once (we can set this to 2 later)
     pn532_packetbuffer[2] = cardbaudrate;
@@ -305,23 +309,24 @@ bool PN532::readPassiveTargetID(uint8_t cardbaudrate, uint8_t *uid, uint8_t *uid
 
       byte            Description
       -------------   ------------------------------------------
-      b0              Tags Found
-      b1              Tag Number (only one used in this example)
+      b0              NbTg  Tags Found
+      b1              Tg    Tag Number (only one used in this example), should be 1
       b2..3           SENS_RES
-      b4              SEL_RES
+      b4              SAK
       b5              NFCID Length
-      b6..NFCIDLen    NFCID
+      b6..NFCIDLen    NFCID1 (UID)
     */
 
-    if (pn532_packetbuffer[0] != 1)
+    if (pn532_packetbuffer[0] != 1 || pn532_packetbuffer[1] !=1)
         return 0;
 
     uint16_t sens_res = pn532_packetbuffer[2];
     sens_res <<= 8;
     sens_res |= pn532_packetbuffer[3];
 
-    DMSG("ATQA: 0x");  DMSG_HEX(sens_res);
-    DMSG(" SAK: 0x");  DMSG_HEX(pn532_packetbuffer[4]);
+    //See AN10833 from NXP on how to retrieve chip type based on ATQA & SAK
+    DMSG("ATQA: 0x");  DMSG_HEX(sens_res);  //Answer to request type A
+    DMSG(" SAK: 0x");  DMSG_HEX(pn532_packetbuffer[4]);//Selective acknowledge (old name: SEL_RES)
     DMSG_STR("");
 
     /* Card appears to be Mifare Classic */
@@ -337,6 +342,38 @@ bool PN532::readPassiveTargetID(uint8_t cardbaudrate, uint8_t *uid, uint8_t *uid
 
     return 1;
 }
+
+//bool PN532::inAttributes(uint8_t Tg, uint8_t *NFCID3t, uint16_t timeout)
+//{
+//    pn532_packetbuffer[0] = 0x56;
+//    pn532_packetbuffer[1] = 0;
+//    pn532_packetbuffer[2] = 0;      //next=0
+//    pn532_packetbuffer[3] = 0;
+
+//    if (HAL(writeCommand)(pn532_packetbuffer, 4)) {
+//        return 0x0;  // command failed
+//    }
+
+//    // read data packet
+//    if (HAL(readResponse)(pn532_packetbuffer, sizeof(pn532_packetbuffer), timeout) < 0) {
+//        return 0x0;
+//    }
+
+//    if (pn532_packetbuffer[0] != 0){
+//        Serial.print("Error nr: ");
+//        Serial.println(pn532_packetbuffer[0], DEC);
+//        return false;
+//    }
+//    for (uint8_t i = 1; i < 11; i++) {
+//        NFCID3t[i] = pn532_packetbuffer[i];
+//        Serial.print(pn532_packetbuffer[i], HEX);
+//        Serial.print(" ");
+//    }
+//    Serial.println();
+
+//    return true;
+//}
+
 
 
 /***** Mifare Classic Functions ******/
@@ -766,8 +803,8 @@ bool PN532::inListPassiveTarget()
 }
 
 int8_t PN532::tgInitAsTarget(const uint8_t* command, const uint8_t len, const uint16_t timeout){
-  
-  int8_t status = HAL(writeCommand)(command, len);
+
+    int8_t status = HAL(writeCommand)(command, len);
     if (status < 0) {
         return -1;
     }
